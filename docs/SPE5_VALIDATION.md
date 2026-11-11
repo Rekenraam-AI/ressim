@@ -1306,6 +1306,20 @@ Order of work, as agreed in the #116 review:
    near-critical relative permeability) and an explicit acceptance rule. Details in
    [SPE5_LINE_SEARCH_EXPERIMENT_2026-11-11.md](SPE5_LINE_SEARCH_EXPERIMENT_2026-11-11.md).
 
+   **Barrier-jump probe (experimental, test-only).** At the final failed line-search iterate the
+   residual was scanned from `tau = 1` to `2^-60`. No trial changes a phase label. The largest
+   row-scaled changes are cell 39 rows 1–5, with essentially all of the change in the face terms
+   (accumulation `~1e-9`, faces `~1e-5`); the producer is on its BHP limit with no rate row, the
+   injector's active rate residual is `~1e-12`, and the shut-in well has none. Cells 33/39 stay
+   TwoPhase (`beta ~0.473..0.479`, `sum ln^2 K ~3.7e-5..4.2e-5`) via the carried-K hint
+   (recovery on) or N1 (off); cell 40 is standard TwoPhase and cell 82 standard SingleLiquid. On
+   the one-sided vapour faces 76/109 the upstream is the first cell; gravity is on and phase
+   potentials differ where both phases are present. Flash tolerances `1e-9..1e-14` change the
+   residual but no tolerance removes the roughness (`1e-10` recovery-on min `1.864e-8` is the only
+   near miss; ranges stay `1e-5..2.7e-5`). The next check is the frozen-label root-existence solve
+   on both branches. Details in
+   [SPE5_BARRIER_JUMP_PROBE_2026-11-11.md](SPE5_BARRIER_JUMP_PROBE_2026-11-11.md).
+
 All thresholds above are **experimental candidates**, not validated values. They come from two
 traces of one case, and the Jutul fixture's per-report numbers cover only the final ministep of
 each report.

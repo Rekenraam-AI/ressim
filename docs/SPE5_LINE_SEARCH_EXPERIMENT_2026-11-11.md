@@ -116,6 +116,12 @@ rule for 33/39, N2 for 25/31 and 16, or near-critical relative permeability) and
 acceptance rule with a bounded signed mass imbalance. The `1e-8` acceptance test and the far liquid
 negative control stay unchanged until that decision.
 
+**Follow-up:** the barrier-jump probe scanned `tau` to `2^-60` at the final iterate. The jump is in
+the face terms of cells 33/39 on the current branch, no trial changes a phase label, and the well
+rows are not the source. Flash tolerances `1e-9..1e-14` change the residual but no tolerance removes
+the roughness, so the root-existence check remains the next step. See
+[SPE5_BARRIER_JUMP_PROBE_2026-11-11.md](SPE5_BARRIER_JUMP_PROBE_2026-11-11.md).
+
 ## Reproduce
 
 ```bash
