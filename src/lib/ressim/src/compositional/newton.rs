@@ -407,6 +407,58 @@ fn bhp_after_step(
     bhp
 }
 
+/// Test-only (#116): the iterate and Newton direction at a failed line search, for the barrier
+/// probe. It is a diagnostic snapshot, not an accepted state.
+#[cfg(test)]
+#[derive(Clone)]
+pub(crate) struct FailedLineSearch {
+    pub(crate) iteration: usize,
+    pub(crate) current: CompositionalState,
+    pub(crate) current_assembly: AssemblyResult,
+    pub(crate) direction: Vec<f64>,
+    pub(crate) bhp_updates: Vec<f64>,
+    pub(crate) tau_bound: f64,
+}
+
+#[cfg(test)]
+thread_local! {
+    static FAILED_LINE_SEARCH: core::cell::RefCell<Option<FailedLineSearch>> =
+        const { core::cell::RefCell::new(None) };
+}
+
+/// Test-only (#116): forget the last failed line search before a diagnostic solve.
+#[cfg(test)]
+pub(crate) fn clear_failed_line_search_for_test() {
+    FAILED_LINE_SEARCH.with(|slot| *slot.borrow_mut() = None);
+}
+
+/// Test-only (#116): take the last failed line search's iterate and direction.
+#[cfg(test)]
+pub(crate) fn take_failed_line_search_for_test() -> Option<FailedLineSearch> {
+    FAILED_LINE_SEARCH.with(|slot| slot.borrow_mut().take())
+}
+
+/// Test-only (#116): assemble one trial at `tau` from a captured failed line search, using the
+/// same direction, well-BHP correction and fixed carried-`K` hint the failed solve used.
+#[cfg(test)]
+pub(crate) fn line_search_trial_for_test(
+    problem: &NewtonProblem<'_>,
+    failure: &FailedLineSearch,
+    tau: f64,
+) -> Option<(CompositionalState, Vec<f64>, AssemblyResult)> {
+    let state = apply_step(problem.layout, &failure.current, &failure.direction, tau)
+        .commit()
+        .ok()?;
+    let bhp = bhp_after_step(
+        &failure.current_assembly.well_bhp,
+        &failure.current_assembly.well_eliminations,
+        &failure.bhp_updates,
+        tau,
+    );
+    let assembly = assemble_at(problem, &state, &bhp).ok()?;
+    Some((state, bhp, assembly))
+}
+
 /// Test-only (#116): backtrack along the fraction-to-boundary step until the full scaled residual
 /// decreases. Every trial is assembled with the attempt's fixed carried-`K` hint, so an evaluation
 /// cannot change the operator the next trial sees.
@@ -471,6 +523,16 @@ fn line_search(
         }
         tau *= 0.5;
     }
+    FAILED_LINE_SEARCH.with(|slot| {
+        *slot.borrow_mut() = Some(FailedLineSearch {
+            iteration,
+            current: current.clone(),
+            current_assembly: assembled.clone(),
+            direction: direction.to_vec(),
+            bhp_updates: bhp_updates.to_vec(),
+            tau_bound: initial_tau,
+        });
+    });
     Err(NewtonError::NotConverged {
         iterations: iteration,
         // The failed search did not move: the reported residual is the iterate's, not the best
@@ -677,6 +739,7 @@ pub(crate) fn solve_newton_observed(
     };
     #[cfg(test)]
     {
+        clear_failed_line_search_for_test();
         crate::fluid::flash::reset_carried_k_for_test();
         if crate::fluid::flash::seed_recovery_enabled_for_test() {
             // Attempt-owned hint: initialize once from the accepted state under this attempt, then

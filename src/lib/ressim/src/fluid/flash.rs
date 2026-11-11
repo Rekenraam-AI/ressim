@@ -259,6 +259,13 @@ fn carried_k(cell: usize) -> Option<Vec<f64>> {
     CARRIED_K.with(|cache| cache.borrow().get(cell).cloned().flatten())
 }
 
+/// Test-only (#116): whether a cell has a carried-`K` hint, for the barrier-jump probe's flash-path
+/// label. Returns only the presence, not the hint, because the hint is attempt-owned.
+#[cfg(test)]
+pub(crate) fn has_carried_k_for_test(cell: usize) -> bool {
+    carried_k(cell).is_some()
+}
+
 #[cfg(test)]
 fn stage_k(cell: usize, state: &FlashState) {
     STAGED_K.with(|staged| {
